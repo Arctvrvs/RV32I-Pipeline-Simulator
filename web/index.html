@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RV32 Web Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <rect x="2" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
+          <rect x="13" y="2" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.55"/>
+          <rect x="2" y="13" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.55"/>
+          <rect x="13" y="13" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.25"/>
+          <line x1="9" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="5.5" y1="9" x2="5.5" y2="13" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="16.5" y1="9" x2="16.5" y2="13" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="9" y1="16.5" x2="13" y2="16.5" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">RV32</span>
+        <span class="brand-sub">PIPELINE SIM</span>
+      </div>
+      <span id="boot" class="status-chip chip-init">INIT</span>
+    </div>
+    <div class="topbar-center">
+      <code class="now-line" id="nowLine">—</code>
+    </div>
+    <div class="topbar-right">
+      <span id="runBadge" class="run-badge badge-paused">● PAUSED</span>
+    </div>
+  </header>
+
+  <main class="dashboard">
+
+    <!-- TOOLBAR -->
+    <section class="card toolbar" aria-label="Controls">
+      <div class="toolbar-body">
+        <div class="ctrl-cluster">
+          <button id="btnRun" class="btn btn-primary" title="Alt+Space">▶ Run</button>
+          <button id="btnStep" class="btn" title="Alt+S">⊢ Step</button>
+          <button id="btnCommit" class="btn" title="Alt+C">⊣ Commit</button>
+          <button id="btnReset" class="btn btn-danger" title="Alt+R">↺ Reset</button>
+        </div>
+
+        <div class="ctrl-cluster">
+          <div class="ctrl-field-wrap">
+            <span class="field-label">CYC/FRAME</span>
+            <input id="cyclesPerFrame" class="field-input mono" type="number" min="1" max="5000" value="50" />
+          </div>
+          <div class="ctrl-field-wrap">
+            <span class="field-label">MEM BASE</span>
+            <input id="memBase" class="field-input mono" type="text" value="0x00000000" />
+          </div>
+          <div class="ctrl-field-wrap">
+            <span class="field-label">DENSITY</span>
+            <select id="density" class="field-select">
+              <option value="comfortable" selected>Comfy</option>
+              <option value="compact">Compact</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="ctrl-cluster toggles">
+          <label class="toggle-wrap" data-tip="Keep the disassembly view scrolled to the current program counter">
+            <input id="followPc" type="checkbox" checked />
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">Follow PC</span>
+          </label>
+          <label class="toggle-wrap" data-tip="Auto-scroll the memory view to the last load/store address">
+            <input id="autoMem" type="checkbox" checked />
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">Auto Mem</span>
+          </label>
+          <label class="toggle-wrap" data-tip="Show the raw 32-bit hex encoding column in the disassembly view">
+            <input id="showRaw" type="checkbox" checked />
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">Raw</span>
+          </label>
+          <label class="toggle-wrap" data-tip="Show ABI register names (ra, sp, a0 …) alongside raw indices (x1, x2, x10 …)">
+            <input id="showAbi" type="checkbox" checked />
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">ABI</span>
+          </label>
+        </div>
+
+        <div class="ctrl-cluster ctrl-cluster-end">
+          <div class="example-wrap">
+            <button id="btnLoadExample" class="btn btn-file" title="Alt+E">⊕ Example</button>
+            <div id="exampleMenu" class="example-menu hidden" role="menu" aria-label="Example programs"></div>
+          </div>
+          <label class="btn btn-file" id="fileLabel" tabindex="0" role="button" aria-label="Load file">
+            <input id="fileInput" type="file" accept=".hex,.elf,.bin" style="display:none" />
+            <span>↑ Load File</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="toolbar-info">
+        <div class="info-row">
+          <div class="info-block">
+            <span class="info-label">STATS</span>
+            <span class="info-val mono" id="statsLine">—</span>
+          </div>
+          <div class="info-block info-block-grow">
+            <span class="info-label">LAST COMMIT</span>
+            <span class="info-val mono" id="commitLine">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hint-bar">
+        <kbd>Alt+Space</kbd> run/pause ·
+        <kbd>Alt+S</kbd> step ·
+        <kbd>Alt+C</kbd> commit ·
+        <kbd>Alt+R</kbd> reset ·
+        <kbd>Alt+L</kbd> load ·
+        <kbd>Alt+E</kbd> example ·
+        <kbd>Esc</kbd> exit max
+      </div>
+    </section>
+
+    <!-- PIPELINE -->
+    <section class="card panel pipelinePanel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-title-text">PIPELINE</span>
+          <span class="panel-title-meta" id="followInfo"></span>
+        </div>
+        <div class="panel-ctrl">
+          <button class="icon-btn" data-action="collapse" data-panel="pipelinePanel" title="Collapse">▾</button>
+          <button class="icon-btn" data-action="maximize" data-panel="pipelinePanel" title="Maximize">⤢</button>
+        </div>
+      </div>
+      <div class="pipeline" id="pipeline"></div>
+    </section>
+
+    <!-- DISASSEMBLY -->
+    <section class="card panel disasmPanel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-title-text">DISASM</span>
+          <span class="panel-title-meta mono" id="disasmRange"></span>
+        </div>
+        <div class="panel-ctrl">
+          <input id="disasmQuery" class="mini-input mono" type="text" placeholder="find / 0xaddr" aria-label="Search disassembly" />
+          <button id="btnDisasmFind" class="icon-btn" title="Find">Find</button>
+          <button id="btnDisasmJump" class="icon-btn" title="Jump">Jump</button>
+          <button class="icon-btn" data-action="collapse" data-panel="disasmPanel" title="Collapse">▾</button>
+          <button class="icon-btn" data-action="maximize" data-panel="disasmPanel" title="Maximize">⤢</button>
+        </div>
+      </div>
+      <div class="scroll mono disasm" id="disasm"></div>
+    </section>
+
+    <!-- LENS -->
+    <section class="card panel lensPanel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-title-text">LENS</span>
+          <span class="panel-title-meta mono" id="lensTitle"></span>
+        </div>
+        <div class="panel-ctrl">
+          <button class="icon-btn" data-action="collapse" data-panel="lensPanel" title="Collapse">▾</button>
+          <button class="icon-btn" data-action="maximize" data-panel="lensPanel" title="Maximize">⤢</button>
+        </div>
+      </div>
+      <div class="scroll">
+        <div class="lens-grid" id="lens"></div>
+      </div>
+    </section>
+
+    <!-- REGISTERS -->
+    <section class="card panel regsPanel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-title-text">REGISTERS</span>
+        </div>
+        <div class="panel-ctrl">
+          <button class="icon-btn" data-action="collapse" data-panel="regsPanel" title="Collapse">▾</button>
+          <button class="icon-btn" data-action="maximize" data-panel="regsPanel" title="Maximize">⤢</button>
+        </div>
+      </div>
+      <div class="scroll mono" id="regs"></div>
+    </section>
+
+    <!-- MEMORY -->
+    <section class="card panel memPanel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-title-text">MEMORY</span>
+          <span class="panel-title-meta mono" id="memRange"></span>
+        </div>
+        <div class="panel-ctrl">
+          <input id="memJump" class="mini-input mono" type="text" placeholder="0xaddr" aria-label="Jump to address" />
+          <button id="btnMemJump" class="icon-btn" title="Jump">Jump</button>
+          <button class="icon-btn" data-action="collapse" data-panel="memPanel" title="Collapse">▾</button>
+          <button class="icon-btn" data-action="maximize" data-panel="memPanel" title="Maximize">⤢</button>
+        </div>
+      </div>
+      <div class="scroll mono" id="mem"></div>
+    </section>
+
+    <!-- UART -->
+    <section class="card panel uartPanel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-title-text">UART OUTPUT</span>
+        </div>
+        <div class="panel-ctrl">
+          <button class="icon-btn" data-action="collapse" data-panel="uartPanel" title="Collapse">▾</button>
+          <button class="icon-btn" data-action="maximize" data-panel="uartPanel" title="Maximize">⤢</button>
+        </div>
+      </div>
+      <pre class="uart mono" id="uart"></pre>
+    </section>
+
+  </main>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+# Hazard demo: 4 load-use stalls; watch stall_cycles counter rise
+10000093  # addi x1, x0, 0x100  # base = 0x100
+02a00113  # addi x2,  x0, 42     # val = 42
+0020a023  # sw   x2,  0(x1)      # mem[0] = 42
+06300113  # addi x2,  x0, 99     # val = 99
+0020a223  # sw   x2,  4(x1)      # mem[4] = 99
+00700113  # addi x2,  x0,  7     # val = 7
+0020a423  # sw   x2,  8(x1)      # mem[8] = 7
+00d00113  # addi x2,  x0, 13     # val = 13
+0020a623  # sw   x2, 12(x1)      # mem[12] = 13
+0000a183  # lw   x3,  0(x1)      # LOAD x3 = 42
+00318233  # add  x4, x3, x3      # USE  x3 => stall 1 cycle
+0040a283  # lw   x5,  4(x1)      # LOAD x5 = 99
+00428333  # add  x6, x5, x4      # USE  x5 => stall 1 cycle
+0080a383  # lw   x7,  8(x1)      # LOAD x7 = 7
+00638433  # add  x8, x7, x6      # USE  x7 => stall 1 cycle
+00c0a483  # lw   x9, 12(x1)      # LOAD x9 = 13
+00848533  # add x10, x9, x8      # USE  x9 => stall 1 cycle
+00a0a823  # sw  x10, 16(x1)      # store final result
+00000013  # nop
+00000013  # nop

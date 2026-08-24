@@ -1,0 +1,14 @@
+# Factorial: 10! = 3628800 stored at address 0x0100
+00100093  # addi x1, x0,  1      # result = 1
+00a00113  # addi x2, x0, 10      # n = 10
+00000193  # addi x3, x0,  0      # acc = 0
+00010213  # addi x4, x2,  0      # inner = n
+001181b3  # add  x3, x3, x1      # acc += result
+fff20213  # addi x4, x4, -1      # inner--
+fe021ce3  # bne  x4, x0, -8      # loop inner
+00018093  # addi x1, x3,  0      # result = acc  (= old_result * n)
+fff10113  # addi x2, x2, -1      # n--
+fe0112e3  # bne  x2, x0, -28     # loop outer (to PC=8)
+10102023  # sw   x1, 256(x0)     # store 10! at address 0x100
+00000013  # nop
+00000013  # nop

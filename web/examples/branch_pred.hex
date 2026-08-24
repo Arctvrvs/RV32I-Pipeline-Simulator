@@ -1,0 +1,10 @@
+# Branch prediction: 500-iteration loop; observe first-taken and loop-exit mispredictions
+00000093  # addi x1, x0,   0     # sum = 0
+1f400113  # addi x2, x0, 500     # n = 500
+00100193  # addi x3, x0,   1     # step = 1
+003080b3  # add  x1, x1, x3      # sum += step
+fff10113  # addi x2, x2, -1      # n--
+fe011ce3  # bne  x2, x0,  -8     # loop (taken 499 times, mispredict at 0)
+10102023  # sw   x1, 256(x0)     # store sum = 500 at 0x100
+00000013  # nop
+00000013  # nop

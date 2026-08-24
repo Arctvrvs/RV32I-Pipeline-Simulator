@@ -1,0 +1,34 @@
+# Bubble sort: sorts [5,3,8,1,9,2,7,4] -> [1,2,3,4,5,7,8,9] at 0x100
+10000793  # addi x15, x0, 0x100  # ptr = 0x100
+00500513  # addi x10, x0,  5
+00a7a023  # sw   x10,  0(x15)         # mem[0x100] = 5
+00300513  # addi x10, x0,  3
+00a7a223  # sw   x10,  4(x15)         # mem[0x104] = 3
+00800513  # addi x10, x0,  8
+00a7a423  # sw   x10,  8(x15)         # mem[0x108] = 8
+00100513  # addi x10, x0,  1
+00a7a623  # sw   x10, 12(x15)         # mem[0x10c] = 1
+00900513  # addi x10, x0,  9
+00a7a823  # sw   x10, 16(x15)         # mem[0x110] = 9
+00200513  # addi x10, x0,  2
+00a7aa23  # sw   x10, 20(x15)         # mem[0x114] = 2
+00700513  # addi x10, x0,  7
+00a7ac23  # sw   x10, 24(x15)         # mem[0x118] = 7
+00400513  # addi x10, x0,  4
+00a7ae23  # sw   x10, 28(x15)         # mem[0x11c] = 4
+10000093  # addi x1,  x0, 0x100  # base
+00700193  # addi x3,  x0, 7     # i = N-1
+00000213  # addi x4,  x0,  0      # j = 0
+00221413  # slli x8,  x4,  2      # x8 = j*4
+00140433  # add  x8,  x8, x1      # x8 = base + j*4
+00042283  # lw   x5,  0(x8)       # a = mem[j]
+00442303  # lw   x6,  4(x8)       # b = mem[j+1]
+00535663  # bge  x6, x5, +12      # if b>=a, no swap
+00642023  # sw   x6,  0(x8)       # mem[j]   = b
+00542223  # sw   x5,  4(x8)       # mem[j+1] = a
+00120213  # addi x4,  x4,  1      # j++
+fe3240e3  # blt  x4, x3, -32   # j<i => inner loop
+fff18193  # addi x3,  x3, -1      # i--
+fc019ae3  # bne  x3, x0, -44   # i>0 => outer loop
+00000013  # nop
+00000013  # nop
